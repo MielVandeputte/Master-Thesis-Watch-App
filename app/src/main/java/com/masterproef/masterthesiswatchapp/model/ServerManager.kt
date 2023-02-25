@@ -1,25 +1,31 @@
 package com.masterproef.masterthesiswatchapp.model
 
-import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import android.content.Context
 import no.nordicsemi.android.ble.BleServerManager
-import no.nordicsemi.android.ble.observer.ServerObserver
+import java.util.*
 
-class ServerManager(val context: Context) : BleServerManager(context), ServerObserver {
-    override fun initializeServer(): MutableList<BluetoothGattService> {
-        TODO("Not yet implemented")
+class ServerManager(context: Context) : BleServerManager(context) {
+
+    private val servicesList: MutableList<BluetoothGattService> = emptyList<BluetoothGattService>().toMutableList()
+
+    init {
+        // Person Identification Service
+        servicesList.add(
+            service(
+                UUID.fromString("07b2ac95-f87c-4fb8-a500-5674097e643d"),
+                characteristic(
+                    UUID.fromString("07b2ac95-f87c-4fb8-a500-5674097e643d"),
+                    BluetoothGattCharacteristic.PROPERTY_READ,
+                    BluetoothGattCharacteristic.PERMISSION_READ,
+
+                )
+            )
+        )
     }
 
-    override fun onServerReady() {
-        TODO("Not yet implemented")
-    }
-
-    override fun onDeviceConnectedToServer(device: BluetoothDevice) {
-        TODO("Not yet implemented")
-    }
-
-    override fun onDeviceDisconnectedFromServer(device: BluetoothDevice) {
-        TODO("Not yet implemented")
+    override fun initializeServer(): List<BluetoothGattService> {
+        return servicesList
     }
 }

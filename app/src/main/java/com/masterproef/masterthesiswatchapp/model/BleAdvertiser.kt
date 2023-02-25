@@ -5,8 +5,11 @@ import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.os.ParcelUuid
 import android.util.Log
+import java.util.*
 
 object BleAdvertiser {
+
+    private val ADVERTISING_UUID: UUID = UUID.fromString("88347b06-b3bf-11ed-afa1-0242ac120002")
     private const val TAG = "ble-advertiser"
 
     class Callback : AdvertiseCallback() {
@@ -32,7 +35,7 @@ object BleAdvertiser {
         return AdvertiseData.Builder()
             .setIncludeDeviceName(false)
             .setIncludeTxPowerLevel(true)
-            .addServiceUuid(ParcelUuid(BackgroundService.MyServiceProfile.MY_SERVICE_UUID))
+            .addServiceUuid(ParcelUuid(ADVERTISING_UUID))
             .build()
     }
 

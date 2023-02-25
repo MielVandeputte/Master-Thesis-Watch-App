@@ -1,6 +1,5 @@
 package com.masterproef.masterthesiswatchapp.model
 
-import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -11,14 +10,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.masterproef.masterthesiswatchapp.R
-import java.util.*
 
-@SuppressLint("MissingPermission")
-class BackgroundService : Service(){
+class ForegroundService : Service() {
 
-    private val bluetoothManager: BluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+    private val TAG = "ForegroundService"
+
+    private lateinit var bluetoothManager: BluetoothManager
     private lateinit var bluetoothObserver: BroadcastReceiver
 
     private var serverManager: ServerManager? = null
@@ -27,38 +27,41 @@ class BackgroundService : Service(){
     // Called by startService
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
+        Log.i(TAG, "Foreground Service Started")
+
         // Setup as a foreground service
         // Persistent notification is needed to keep this service running
         val notificationChannel = NotificationChannel(
-            BackgroundService::class.java.simpleName,
-            "Background service",
+            ForegroundService::class.java.simpleName,
+            "Foreground service",
             NotificationManager.IMPORTANCE_DEFAULT
         )
 
-        val notificationService = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationService = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationService.createNotificationChannel(notificationChannel)
 
-        val notification = NotificationCompat.Builder(this, BackgroundService::class.java.simpleName)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Master Thesis Service")
-            .setContentText("Bluetooth Low Energy and Sensors are active")
-            .setAutoCancel(true)
+        val notification =
+            NotificationCompat.Builder(this, ForegroundService::class.java.simpleName)
+                .setSmallIcon(R.mipmap.ic_launcher).setContentTitle("Master Thesis Service")
+                .setContentText("Bluetooth Low Energy and Sensors are active")
+                .setAutoCancel(true)
 
         startForeground(1, notification.build())
 
         // Observe OS state changes in BLE
-        // Start or stop advertising if bluetooth is enabled or disabled
+        // Call onDestroy if bluetooth is turned off
         bluetoothObserver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
                         val bluetoothState = intent.getIntExtra(
-                            BluetoothAdapter.EXTRA_STATE,
-                            -1
+                            BluetoothAdapter.EXTRA_STATE, -1
                         )
                         when (bluetoothState) {
-                            BluetoothAdapter.STATE_ON -> startAdvertising()
-                            BluetoothAdapter.STATE_OFF -> stopAdvertising()
+                            BluetoothAdapter.STATE_OFF -> {
+                                stopForeground(STOP_FOREGROUND_REMOVE)
+                                stopSelf()
+                            }
                         }
                     }
                 }
@@ -68,7 +71,14 @@ class BackgroundService : Service(){
         registerReceiver(bluetoothObserver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
 
         // Start advertising based on if bluetooth is on
-        if(bluetoothManager.adapter?.isEnabled == true) startAdvertising()
+        bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+
+        if (bluetoothManager.adapter?.isEnabled == true) {
+            startAdvertising()
+        } else {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
 
         return super.onStartCommand(intent, flags, startId)
     }
@@ -77,8 +87,8 @@ class BackgroundService : Service(){
     override fun onDestroy() {
         super.onDestroy()
 
-        stopAdvertising()
         unregisterReceiver(bluetoothObserver)
+        stopAdvertising()
     }
 
     private fun startAdvertising() {
@@ -87,30 +97,33 @@ class BackgroundService : Service(){
 
         bleAdvertiseCallback = BleAdvertiser.Callback()
 
-        bluetoothManager.adapter.bluetoothLeAdvertiser?.startAdvertising(
-            BleAdvertiser.settings(),
-            BleAdvertiser.advertiseData(),
-            bleAdvertiseCallback!!
-        )
+        try {
+            bluetoothManager.adapter?.bluetoothLeAdvertiser?.startAdvertising(
+                BleAdvertiser.settings(), BleAdvertiser.advertiseData(), bleAdvertiseCallback!!
+            )
+        } catch (e: SecurityException) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     private fun stopAdvertising() {
-        bleAdvertiseCallback?.let {
-            val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-            bluetoothManager.adapter.bluetoothLeAdvertiser?.stopAdvertising(it)
-            bleAdvertiseCallback = null
-        }
+        try {
+            bleAdvertiseCallback?.let {
+                val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+                bluetoothManager.adapter.bluetoothLeAdvertiser?.stopAdvertising(it)
+                bleAdvertiseCallback = null
+            }
 
-        serverManager?.close()
-        serverManager = null
+            serverManager?.close()
+            serverManager = null
+        } catch (e: SecurityException) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     override fun onBind(p0: Intent?): IBinder? {
         return null
     }
-
-    object MyServiceProfile {
-        val MY_SERVICE_UUID: UUID = UUID.fromString("be70e377-8a49-4f51-b51a-6be3f79f92fc")
-    }
-
 }
