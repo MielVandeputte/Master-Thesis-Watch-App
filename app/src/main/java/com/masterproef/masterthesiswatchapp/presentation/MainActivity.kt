@@ -17,7 +17,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +31,9 @@ import androidx.wear.compose.material.Switch
 import androidx.wear.compose.material.Text
 import com.masterproef.masterthesiswatchapp.model.ForegroundService
 import com.masterproef.masterthesiswatchapp.presentation.theme.MasterThesisWatchAppTheme
+
+// TO DO: prevent crashes if toggling quickly back and forth by checking when service is done starting
+// Auto toggle when service crashes / is forcefully turned off
 
 class MainActivity : ComponentActivity() {
 
@@ -117,7 +121,6 @@ class MainActivity : ComponentActivity() {
 
         return true
     }
-
 
     private fun askPermissions() {
 

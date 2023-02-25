@@ -49,7 +49,7 @@ class ForegroundService : Service() {
         startForeground(1, notification.build())
 
         // Observe OS state changes in BLE
-        // Call onDestroy if bluetooth is turned off
+        // Stop service if bluetooth is turned off
         bluetoothObserver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
